@@ -1,0 +1,20 @@
+{
+  "name": "@repo/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "nodemailer": "10.0.16"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "8.0.2"
+  }
+}

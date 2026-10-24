@@ -1,0 +1,206 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Shared UI primitives live in packages/ui. */
+@source "../../../../packages/ui/src";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens — Cadre. Deep teal accent on cool slate neutrals.
+ * All text/background pairs meet WCAG AA contrast in both themes.
+ */
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.992 0.002 220);
+  --foreground: oklch(0.19 0.014 230);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.014 230);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.014 230);
+  --primary: oklch(0.49 0.092 186);
+  --primary-foreground: oklch(0.99 0.004 186);
+  --secondary: oklch(0.961 0.006 220);
+  --secondary-foreground: oklch(0.25 0.016 230);
+  --muted: oklch(0.965 0.005 220);
+  --muted-foreground: oklch(0.48 0.018 230);
+  --accent: oklch(0.955 0.022 186);
+  --accent-foreground: oklch(0.28 0.05 186);
+  --destructive: oklch(0.56 0.22 27);
+  --border: oklch(0.914 0.008 220);
+  --input: oklch(0.884 0.009 220);
+  --ring: oklch(0.56 0.095 186);
+  --success: oklch(0.6 0.15 150);
+  --success-foreground: oklch(0.4 0.1 150);
+  --warning: oklch(0.78 0.15 75);
+  --warning-foreground: oklch(0.45 0.11 60);
+  --info: oklch(0.58 0.14 250);
+  --info-foreground: oklch(0.42 0.12 252);
+  --chart-1: oklch(0.55 0.095 186);
+  --chart-2: oklch(0.58 0.14 255);
+  --chart-3: oklch(0.72 0.15 75);
+  --chart-4: oklch(0.62 0.17 30);
+  --chart-5: oklch(0.62 0.14 150);
+  --sidebar: oklch(0.982 0.004 220);
+  --sidebar-foreground: oklch(0.26 0.014 230);
+  --sidebar-accent: oklch(0.944 0.02 186);
+  --sidebar-accent-foreground: oklch(0.24 0.045 186);
+  --sidebar-border: oklch(0.92 0.007 220);
+  --brand: var(--primary);
+}
+
+.dark {
+  --background: oklch(0.158 0.01 230);
+  --foreground: oklch(0.96 0.004 220);
+  --card: oklch(0.193 0.011 230);
+  --card-foreground: oklch(0.96 0.004 220);
+  --popover: oklch(0.205 0.012 230);
+  --popover-foreground: oklch(0.96 0.004 220);
+  --primary: oklch(0.75 0.11 183);
+  --primary-foreground: oklch(0.17 0.03 186);
+  --secondary: oklch(0.255 0.013 230);
+  --secondary-foreground: oklch(0.94 0.004 220);
+  --muted: oklch(0.245 0.012 230);
+  --muted-foreground: oklch(0.72 0.014 225);
+  --accent: oklch(0.27 0.035 186);
+  --accent-foreground: oklch(0.95 0.015 186);
+  --destructive: oklch(0.68 0.19 25);
+  --border: oklch(0.295 0.012 230);
+  --input: oklch(0.325 0.013 230);
+  --ring: oklch(0.75 0.11 183);
+  --success: oklch(0.7 0.15 150);
+  --success-foreground: oklch(0.82 0.12 150);
+  --warning: oklch(0.8 0.14 75);
+  --warning-foreground: oklch(0.86 0.12 80);
+  --info: oklch(0.7 0.13 250);
+  --info-foreground: oklch(0.83 0.1 250);
+  --chart-1: oklch(0.75 0.11 183);
+  --chart-2: oklch(0.7 0.13 255);
+  --chart-3: oklch(0.8 0.14 75);
+  --chart-4: oklch(0.72 0.15 32);
+  --chart-5: oklch(0.74 0.13 150);
+  --sidebar: oklch(0.178 0.011 230);
+  --sidebar-foreground: oklch(0.9 0.006 220);
+  --sidebar-accent: oklch(0.255 0.028 186);
+  --sidebar-accent-foreground: oklch(0.96 0.01 186);
+  --sidebar-border: oklch(0.275 0.012 230);
+}
+
+@theme inline {
+  --font-sans:
+    var(--font-instrument), var(--font-plex-arabic), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-brand: var(--brand);
+
+  --animate-voice-bar: voice-bar 1s ease-in-out infinite;
+  --animate-breathe: breathe 3.2s ease-in-out infinite;
+  --animate-ring-pulse: ring-pulse 2s ease-out infinite;
+
+  @keyframes voice-bar {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scale(1.06);
+      opacity: 0.9;
+    }
+  }
+  @keyframes ring-pulse {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* 15px base: a slightly denser, calmer UI. Everything in rem scales with it. */
+    font-size: 93.75%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    @apply bg-primary/20;
+  }
+  :focus-visible {
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Horizontally scrollable strips (tab rows) without a visible scrollbar. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@repo/interview-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./state-machine": "./src/state-machine.ts",
+    "./snapshot": "./src/snapshot.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@repo/ai": "workspace:*",
+    "@repo/config": "workspace:*",
+    "@repo/scoring": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/validation": "workspace:*",
+    "zod": "4.6.5"
+  }
+}

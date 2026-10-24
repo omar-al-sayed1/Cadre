@@ -1,0 +1,17 @@
+{
+  "name": "@repo/voice",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./voices": "./src/voices.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "@repo/shared": "workspace:*"
+  }
+}

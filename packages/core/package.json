@@ -1,0 +1,38 @@
+{
+  "name": "@repo/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./permissions": "./src/permissions.ts",
+    "./jobs": "./src/jobs/handlers.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "seed": "tsx src/seed/index.ts",
+    "smoke:prospecting": "tsx --env-file=../../.env src/services/sales/prospecting/smoke.ts"
+  },
+  "dependencies": {
+    "@repo/ai": "workspace:*",
+    "@repo/config": "workspace:*",
+    "@repo/database": "workspace:*",
+    "@repo/email": "workspace:*",
+    "@repo/interview-engine": "workspace:*",
+    "@repo/queue": "workspace:*",
+    "@repo/sales-engine": "workspace:*",
+    "@repo/scoring": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/storage": "workspace:*",
+    "@repo/validation": "workspace:*",
+    "@repo/voice": "workspace:*",
+    "mammoth": "1.13.0",
+    "unpdf": "1.8.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "better-auth": "1.7.7",
+    "dotenv": "17.4.2",
+    "tsx": "4.23.15"
+  }
+}

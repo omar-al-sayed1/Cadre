@@ -1,0 +1,1679 @@
+// Cadre — relational data model (platform + AI Interviewer + AI Sales Agent).
+// Conventions:
+//   * cuid string ids, createdAt/updatedAt on mutable entities
+//   * soft deletion (deletedAt) on important business entities
+//   * candidate-facing data never references server-only fields directly
+//   * JSON columns are validated by zod schemas in @repo/validation / @repo/ai before writes
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum PlatformRole {
+  USER
+  SUPER_ADMIN
+}
+
+enum CompanyRole {
+  COMPANY_ADMIN
+  RECRUITER
+  HIRING_MANAGER
+  REVIEWER
+  SALES_MANAGER
+  SALES_REP
+  VIEWER
+}
+
+enum CompanySize {
+  SIZE_1_10
+  SIZE_11_50
+  SIZE_51_200
+  SIZE_201_1000
+  SIZE_1000_PLUS
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TEMPORARY
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum ExperienceLevel {
+  INTERN
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  PRINCIPAL
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum SkillCategory {
+  TECHNICAL
+  DOMAIN
+  SOFT
+  LANGUAGE
+  TOOL
+}
+
+enum InterviewType {
+  SCREENING
+  TECHNICAL
+  BEHAVIORAL
+  HR
+  MIXED
+}
+
+enum DifficultyMode {
+  EASY
+  MEDIUM
+  HARD
+  ADAPTIVE
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ResponseMode {
+  VOICE_ONLY
+  TEXT_ONLY
+  VOICE_AND_TEXT
+}
+
+enum InterviewerPersonality {
+  PROFESSIONAL
+  FRIENDLY
+  FORMAL
+  CONVERSATIONAL
+}
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum QuestionType {
+  INTRODUCTION
+  GENERAL
+  TECHNICAL
+  BEHAVIORAL
+  SITUATIONAL
+  EXPERIENCE
+  PROBLEM_SOLVING
+  SYSTEM_DESIGN
+  CODING
+  FOLLOW_UP
+  CLOSING
+}
+
+enum QuestionSource {
+  FIXED
+  AI_GENERATED
+  HYBRID
+}
+
+enum CandidateStage {
+  INVITED
+  OPENED
+  STARTED
+  COMPLETED
+  UNDER_REVIEW
+  SHORTLISTED
+  OFFER
+  HIRED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum InvitationStatus {
+  PENDING
+  OPENED
+  STARTED
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum SessionStatus {
+  CREATED
+  READY
+  STARTING
+  AI_SPEAKING
+  WAITING_FOR_CANDIDATE
+  CANDIDATE_SPEAKING
+  PROCESSING_ANSWER
+  GENERATING_RESPONSE
+  PAUSED
+  RECONNECTING
+  FINISHING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+enum CompletionReason {
+  NORMAL
+  TIME_LIMIT
+  CANDIDATE_ENDED
+  TECHNICAL_FAILURE
+  ADMIN_TERMINATED
+  EXPIRED
+}
+
+enum MessageRole {
+  SYSTEM_EVENT
+  AI
+  CANDIDATE
+}
+
+enum AnswerSource {
+  TEXT
+  VOICE
+  CODE
+}
+
+enum Recommendation {
+  STRONG_MOVE_FORWARD
+  MOVE_FORWARD
+  BORDERLINE
+  DO_NOT_MOVE_FORWARD
+  INSUFFICIENT_EVIDENCE
+}
+
+enum ConfidenceLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum EvaluationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EvaluationPhase {
+  INTERIM
+  FINAL
+}
+
+enum IntegrityEventType {
+  TAB_HIDDEN
+  WINDOW_BLUR
+  CONNECTION_LOST
+  CONNECTION_RESTORED
+  LONG_RESPONSE_LATENCY
+  PASTE
+  COPY
+  MULTIPLE_SESSIONS
+  RAPID_RECONNECTS
+  FULLSCREEN_EXIT
+}
+
+enum ConsentType {
+  TERMS
+  PRIVACY
+  AI_INTERVIEW
+  RECORDING
+  CAMERA
+}
+
+enum RecordingKind {
+  CANDIDATE_AUDIO
+  AI_AUDIO
+  SESSION_AUDIO
+  VIDEO
+}
+
+enum FeedbackAccuracy {
+  ACCURATE
+  PARTIALLY_ACCURATE
+  INACCURATE
+}
+
+enum ResumeParseStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  INTERVIEW_COMPLETED
+  EVALUATION_READY
+  INVITATION_EXPIRED
+  TEAM_INVITE
+  SYSTEM
+  SALES_ALERT
+}
+
+enum BackgroundJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AiOperation {
+  GENERATE_INTERVIEW
+  NEXT_ACTION
+  EVALUATE_ANSWER
+  EVALUATE_INTERVIEW
+  PARSE_RESUME
+  SUMMARIZE_MEMORY
+  SPEECH_TO_TEXT
+  TEXT_TO_SPEECH
+  SALES_COPILOT
+  SALES_RESEARCH
+  SALES_QUALIFY
+  SALES_GENERATE_MESSAGE
+  SALES_ANALYZE_CONVERSATION
+  SALES_DISCOVER
+}
+
+enum ActorType {
+  USER
+  CANDIDATE
+  SYSTEM
+  AI
+}
+
+// ─────────────── Platform: products, subscriptions, agents ───────────────
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum AgentType {
+  INTERVIEWER
+  SALES
+  CUSTOMER_SUPPORT
+  PHONE
+  EMAIL
+  DOCUMENT
+}
+
+enum AgentStatus {
+  SETUP
+  ACTIVE
+  PAUSED
+}
+
+// ─────────────────────────── AI Sales Agent ───────────────────────────
+
+enum LeadStatus {
+  NEW
+  RESEARCHING
+  QUALIFIED
+  UNQUALIFIED
+  CONTACTED
+  ENGAGED
+  INTERESTED
+  MEETING_REQUESTED
+  MEETING_BOOKED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+  DO_NOT_CONTACT
+}
+
+enum LeadSource {
+  MANUAL
+  CSV_IMPORT
+  CRM
+  API
+  DISCOVERY
+  INBOUND
+}
+
+enum ResearchStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SalesChannel {
+  EMAIL
+  LINKEDIN
+  SMS
+  WHATSAPP
+  CALL
+  MEETING
+  OTHER
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum SalesMessageStatus {
+  DRAFT
+  LOGGED
+  APPROVED
+  SENT
+  FAILED
+  DISCARDED
+}
+
+enum SuppressionReason {
+  UNSUBSCRIBED
+  BOUNCED
+  COMPLAINT
+  MANUAL
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ───────────────────── Identity & authentication ─────────────────────
+// User / AuthSession / AuthAccount / Verification are managed by Better Auth.
+
+model User {
+  id              String       @id
+  name            String
+  email           String       @unique
+  emailVerified   Boolean      @default(false)
+  image           String?
+  platformRole    PlatformRole @default(USER)
+  activeCompanyId String?
+  lastLoginAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  sessions            AuthSession[]
+  accounts            AuthAccount[]
+  memberships         CompanyMember[]
+  jobsCreated         Job[]                @relation("JobCreatedBy")
+  templatesCreated    InterviewTemplate[]  @relation("TemplateCreatedBy")
+  notes               RecruiterNote[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  evaluationFeedback  EvaluationFeedback[]
+  invitationsCreated  InterviewInvitation[]
+  teamInvitationsSent TeamInvitation[]
+  salesLeadsOwned     SalesLead[]          @relation("SalesLeadOwner")
+
+  @@map("user")
+}
+
+model AuthSession {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_session")
+}
+
+model AuthAccount {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ───────────────────────── Companies & teams ─────────────────────────
+
+model Plan {
+  id                    String   @id @default(cuid())
+  key                   String   @unique
+  /// Product this plan belongs to (see packages/config/src/products.ts)
+  productKey            String   @default("interviewer")
+  name                  String
+  description           String?
+  monthlyInterviewLimit Int?
+  monthlyAiBudgetUsd    Float?
+  seats                 Int?
+  priceMonthlyCents     Int      @default(0)
+  currency              String   @default("USD")
+  /// Product-specific usage limits, e.g. { "leadsPerMonth": 500 } (null value = unlimited)
+  limits                Json     @default("{}")
+  features              Json     @default("{}")
+  trialDays             Int      @default(14)
+  isPublic              Boolean  @default(true)
+  sortOrder             Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  companies     Company[]
+  subscriptions ProductSubscription[]
+
+  @@index([productKey, sortOrder])
+
+  @@map("plan")
+}
+
+model Company {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  logoKey      String?
+  website      String?
+  industry     String?
+  size         CompanySize?
+  country      String?
+  timezone     String       @default("UTC")
+  primaryColor String?
+  welcomeText  String?
+  /// CompanySettings (validated by @repo/validation companySettingsSchema)
+  settings     Json         @default("{}")
+  planId       String?
+  deletedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  plan                Plan?                 @relation(fields: [planId], references: [id])
+  members             CompanyMember[]
+  teamInvitations     TeamInvitation[]
+  skills              Skill[]
+  jobs                Job[]
+  templates           InterviewTemplate[]
+  candidates          Candidate[]
+  sessions            InterviewSession[]
+  questionBank        QuestionBankItem[]
+  notes               RecruiterNote[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  aiUsage             AiUsageEvent[]
+  featureOverrides    FeatureFlagOverride[]
+  deletionRequests    DataDeletionRequest[]
+  subscriptions       ProductSubscription[]
+  agents              Agent[]
+  salesLeads          SalesLead[]
+  salesActivities     SalesActivity[]
+  salesResearch       SalesLeadResearch[]
+  salesConversations  SalesConversation[]
+  salesMessages       SalesMessage[]
+  salesSuppressions   SalesSuppression[]
+  salesDiscoveryRuns  SalesDiscoveryRun[]
+
+  @@map("company")
+}
+
+model CompanyMember {
+  id          String      @id @default(cuid())
+  companyId   String
+  userId      String
+  role        CompanyRole
+  invitedById String?
+  joinedAt    DateTime    @default(now())
+  deletedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@map("company_member")
+}
+
+model TeamInvitation {
+  id          String      @id @default(cuid())
+  companyId   String
+  email       String
+  role        CompanyRole
+  tokenHash   String      @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  invitedById String
+  createdAt   DateTime    @default(now())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invitedBy User    @relation(fields: [invitedById], references: [id])
+
+  @@index([companyId, email])
+  @@map("team_invitation")
+}
+
+// ─────────────────────────── Jobs & skills ───────────────────────────
+
+model Skill {
+  id          String        @id @default(cuid())
+  companyId   String
+  name        String
+  slug        String
+  category    SkillCategory @default(TECHNICAL)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobSkills         JobSkill[]
+  questions         InterviewQuestion[]
+  questionBankItems QuestionBankItem[]
+
+  @@unique([companyId, slug])
+  @@map("skill")
+}
+
+model Job {
+  id                      String          @id @default(cuid())
+  companyId               String
+  title                   String
+  department              String?
+  location                String?
+  employmentType          EmploymentType  @default(FULL_TIME)
+  workMode                WorkMode        @default(REMOTE)
+  description             String          @default("")
+  responsibilities        String          @default("")
+  requirements            String          @default("")
+  preferredQualifications String          @default("")
+  experienceLevel         ExperienceLevel @default(MID)
+  minExperienceYears      Int?
+  maxExperienceYears      Int?
+  salaryMin               Int?
+  salaryMax               Int?
+  salaryCurrency          String?
+  status                  JobStatus       @default(DRAFT)
+  createdById             String?
+  deletedAt               DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy    User?               @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  skills       JobSkill[]
+  templates    InterviewTemplate[]
+  applications Application[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@map("job")
+}
+
+model JobSkill {
+  id            String     @id @default(cuid())
+  jobId         String
+  skillId       String
+  /// Relative importance, 0–100. Weights of a job's skills are normalised to sum to 100.
+  weight        Int
+  expectedLevel SkillLevel @default(INTERMEDIATE)
+  isCritical    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@unique([jobId, skillId])
+  @@map("job_skill")
+}
+
+// ─────────────────────── Interview configuration ───────────────────────
+
+model InterviewTemplate {
+  id                 String                 @id @default(cuid())
+  companyId          String
+  jobId              String
+  name               String
+  description        String?
+  type               InterviewType          @default(MIXED)
+  durationMinutes    Int                    @default(30)
+  minQuestions       Int                    @default(5)
+  maxQuestions       Int                    @default(15)
+  difficulty         DifficultyMode         @default(ADAPTIVE)
+  language           String                 @default("en")
+  responseMode       ResponseMode           @default(VOICE_AND_TEXT)
+  personality        InterviewerPersonality @default(PROFESSIONAL)
+  interviewerName    String?
+  voice              String?
+  /// TemplateAiSettings (follow-ups, adaptive difficulty, resume questions, …)
+  aiSettings         Json                   @default("{}")
+  /// ScoringConfig (category weights)
+  scoringConfig      Json                   @default("{}")
+  status             TemplateStatus         @default(DRAFT)
+  /// Latest published version number (0 = never published)
+  publishedVersion   Int                    @default(0)
+  /// True when the draft differs from the latest published snapshot
+  hasUnpublishedChanges Boolean             @default(true)
+  generatedByAi      Boolean                @default(false)
+  createdById        String?
+  deletedAt          DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  company     Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  job         Job                        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy   User?                      @relation("TemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  sections    InterviewSection[]
+  questions   InterviewQuestion[]
+  versions    InterviewTemplateVersion[]
+  invitations InterviewInvitation[]
+
+  @@index([companyId, jobId])
+  @@map("interview_template")
+}
+
+/// Immutable snapshot of a template at publish time. Invitations and sessions
+/// always reference a version so later edits never change an in-flight interview.
+model InterviewTemplateVersion {
+  id             String   @id @default(cuid())
+  templateId     String
+  version        Int
+  /// TemplateSnapshot (@repo/interview-engine templateSnapshotSchema)
+  snapshot       Json
+  scoringVersion String
+  publishedById  String?
+  publishedAt    DateTime @default(now())
+
+  template    InterviewTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  invitations InterviewInvitation[]
+  sessions    InterviewSession[]
+
+  @@unique([templateId, version])
+  @@map("interview_template_version")
+}
+
+model InterviewSection {
+  id                    String   @id @default(cuid())
+  templateId            String
+  name                  String
+  description           String?
+  order                 Int
+  targetDurationMinutes Int      @default(5)
+  minQuestions          Int      @default(1)
+  maxQuestions          Int      @default(4)
+  weight                Int      @default(0)
+  /// Skill ids this section focuses on (used by the planner for coverage)
+  focusSkillIds         String[] @default([])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  template  InterviewTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  questions InterviewQuestion[]
+
+  @@index([templateId, order])
+  @@map("interview_section")
+}
+
+model InterviewQuestion {
+  id               String             @id @default(cuid())
+  templateId       String
+  sectionId        String?
+  text             String
+  type             QuestionType       @default(TECHNICAL)
+  difficulty       QuestionDifficulty @default(MEDIUM)
+  skillId          String?
+  weight           Int                @default(1)
+  expectedTopics   String[]           @default([])
+  /// Server-only. Never sent to candidates.
+  idealAnswer      String?
+  redFlags         String[]           @default([])
+  followUpGuidance String?
+  mandatory        Boolean            @default(false)
+  source           QuestionSource     @default(FIXED)
+  order            Int                @default(0)
+  bankItemId       String?
+  /// CodingQuestionConfig for CODING questions (languages, starter code, tests)
+  codingConfig     Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  template InterviewTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  section  InterviewSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  skill    Skill?            @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  bankItem QuestionBankItem? @relation(fields: [bankItemId], references: [id], onDelete: SetNull)
+
+  @@index([templateId, sectionId, order])
+  @@map("interview_question")
+}
+
+model QuestionBankItem {
+  id               String             @id @default(cuid())
+  companyId        String
+  text             String
+  type             QuestionType       @default(TECHNICAL)
+  difficulty       QuestionDifficulty @default(MEDIUM)
+  skillId          String?
+  weight           Int                @default(1)
+  expectedTopics   String[]           @default([])
+  idealAnswer      String?
+  redFlags         String[]           @default([])
+  followUpGuidance String?
+  tags             String[]           @default([])
+  createdById      String?
+  deletedAt        DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  skill     Skill?              @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  questions InterviewQuestion[]
+
+  @@index([companyId, type])
+  @@index([tags], type: Gin)
+  @@map("question_bank_item")
+}
+
+// ─────────────────────────── Candidates ───────────────────────────
+
+model Candidate {
+  id          String    @id @default(cuid())
+  companyId   String
+  firstName   String
+  lastName    String    @default("")
+  email       String
+  phone       String?
+  linkedinUrl String?
+  location    String?
+  source      String?
+  createdById String?
+  /// Set when personal data has been erased (privacy request / retention)
+  anonymizedAt DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  resumes      CandidateResume[]
+  applications Application[]
+  invitations  InterviewInvitation[]
+  sessions     InterviewSession[]
+  consents     ConsentRecord[]
+  notes        RecruiterNote[]
+
+  @@unique([companyId, email])
+  @@index([companyId, createdAt])
+  @@index([companyId, lastName, firstName])
+  @@map("candidate")
+}
+
+model CandidateResume {
+  id               String            @id @default(cuid())
+  candidateId      String
+  storageKey       String
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  parseStatus      ResumeParseStatus @default(PENDING)
+  /// ParsedResume (@repo/ai parsedResumeSchema). Untrusted data — never treated as instructions.
+  parsedData       Json?
+  parseError       String?
+  promptVersion    String?
+  parsedAt         DateTime?
+  uploadedById     String?
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, createdAt])
+  @@map("candidate_resume")
+}
+
+/// A candidate's candidacy for a specific job; owns the pipeline stage.
+model Application {
+  id             String         @id @default(cuid())
+  candidateId    String
+  jobId          String
+  stage          CandidateStage @default(INVITED)
+  stageUpdatedAt DateTime       @default(now())
+  /// Optional manual rating (1–5) from the hiring team
+  manualRating   Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  candidate   Candidate             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job         Job                   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  invitations InterviewInvitation[]
+  sessions    InterviewSession[]
+  notes       RecruiterNote[]
+
+  @@unique([candidateId, jobId])
+  @@index([jobId, stage])
+  @@map("application")
+}
+
+model InterviewInvitation {
+  id                String           @id @default(cuid())
+  applicationId     String
+  candidateId       String
+  templateId        String
+  templateVersionId String
+  /// SHA-256 of the raw token. The raw token only exists in the emailed URL.
+  tokenHash         String           @unique
+  expiresAt         DateTime
+  maxAttempts       Int              @default(2)
+  attemptCount      Int              @default(0)
+  status            InvitationStatus @default(PENDING)
+  sendCount         Int              @default(0)
+  lastSentAt        DateTime?
+  openedAt          DateTime?
+  cancelledAt       DateTime?
+  createdById       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  application     Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidate       Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  template        InterviewTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateVersion InterviewTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  createdBy       User?                    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  sessions        InterviewSession[]
+  consents        ConsentRecord[]
+
+  @@index([candidateId])
+  @@index([status, expiresAt])
+  @@map("interview_invitation")
+}
+
+// ─────────────────────────── Interview runtime ───────────────────────────
+
+model InterviewSession {
+  id                String            @id @default(cuid())
+  companyId         String
+  invitationId      String
+  candidateId       String
+  applicationId     String
+  templateVersionId String
+  attemptNumber     Int               @default(1)
+  status            SessionStatus     @default(CREATED)
+  /// Optimistic-concurrency counter; incremented on every engine state write
+  stateVersion      Int               @default(0)
+  /// SHA-256 of the candidate session credential (httpOnly cookie)
+  credentialHash    String
+  language          String            @default("en")
+  responseMode      ResponseMode      @default(VOICE_AND_TEXT)
+  recordingEnabled  Boolean           @default(false)
+  /// EngineMemory (@repo/interview-engine) — server-only working memory
+  engineState       Json              @default("{}")
+  currentSectionKey String?
+  currentQuestionKey String?
+  questionsAsked    Int               @default(0)
+  followUpsAsked    Int               @default(0)
+  turnLockedAt      DateTime?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  lastActivityAt    DateTime?
+  lastHeartbeatAt   DateTime?
+  pausedAt          DateTime?
+  /// Seconds the session spent paused (excluded from interview time)
+  pausedSeconds     Int               @default(0)
+  reconnectCount    Int               @default(0)
+  completionReason  CompletionReason?
+  failureReason     String?
+  promptVersion     String?
+  scoringVersion    String?
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  company          Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invitation       InterviewInvitation      @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  candidate        Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  application      Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  templateVersion  InterviewTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  messages         InterviewMessage[]
+  answers          CandidateAnswer[]
+  questionEvals    QuestionEvaluation[]
+  evaluation       InterviewEvaluation?
+  recordings       Recording[]
+  integrityEvents  IntegrityEvent[]
+  consents         ConsentRecord[]
+  notes            RecruiterNote[]
+  candidateFeedback CandidateFeedback?
+  aiUsage          AiUsageEvent[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([invitationId])
+  @@index([candidateId])
+  @@map("interview_session")
+}
+
+model InterviewMessage {
+  id              String      @id @default(cuid())
+  sessionId       String
+  role            MessageRole
+  content         String
+  sequenceNumber  Int
+  /// Client idempotency key (candidate messages) — prevents duplicate answers on retry
+  clientMessageId String?
+  /// Engine action that produced an AI message (ASK_QUESTION, ASK_FOLLOW_UP, …)
+  action          String?
+  questionKey     String?
+  sectionKey      String?
+  audioStorageKey String?
+  durationMs      Int?
+  /// Server-only metadata (reasonInternal, evaluation refs, latency). Never sent to candidates.
+  metadata        Json        @default("{}")
+  createdAt       DateTime    @default(now())
+
+  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answer     CandidateAnswer? @relation("AnswerMessage")
+  recordings Recording[]
+
+  @@unique([sessionId, sequenceNumber])
+  @@unique([sessionId, clientMessageId])
+  @@map("interview_message")
+}
+
+model CandidateAnswer {
+  id                String             @id @default(cuid())
+  sessionId         String
+  messageId         String             @unique
+  questionMessageId String?
+  questionKey       String?
+  questionText      String
+  questionType      QuestionType       @default(GENERAL)
+  sectionKey        String?
+  skillKey          String?
+  difficulty        QuestionDifficulty @default(MEDIUM)
+  isFollowUp        Boolean            @default(false)
+  followUpDepth     Int                @default(0)
+  /// Groups a primary question with its follow-ups for question-by-question review
+  threadKey         String
+  source            AnswerSource       @default(TEXT)
+  responseLatencyMs Int?
+  createdAt         DateTime           @default(now())
+
+  session     InterviewSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  message     InterviewMessage     @relation("AnswerMessage", fields: [messageId], references: [id], onDelete: Cascade)
+  evaluations QuestionEvaluation[]
+
+  @@index([sessionId, threadKey])
+  @@map("candidate_answer")
+}
+
+model QuestionEvaluation {
+  id                   String          @id @default(cuid())
+  sessionId            String
+  evaluationId         String?
+  answerId             String?
+  phase                EvaluationPhase
+  threadKey            String
+  questionKey          String?
+  questionText         String
+  skillKey             String?
+  difficulty           QuestionDifficulty?
+  score                Int?
+  confidence           Float           @default(0)
+  answerSummary        String          @default("")
+  assessment           String          @default("")
+  demonstratedConcepts String[]        @default([])
+  /// Server-only. Never sent to candidates.
+  missingConcepts      String[]        @default([])
+  incorrectClaims      String[]        @default([])
+  needsFollowUp        Boolean         @default(false)
+  insufficientEvidence Boolean         @default(false)
+  /// STAR completeness for behavioural questions
+  star                 Json?
+  promptVersion        String?
+  createdAt            DateTime        @default(now())
+
+  session    InterviewSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluation InterviewEvaluation? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  answer     CandidateAnswer?     @relation(fields: [answerId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, phase])
+  @@index([evaluationId])
+  @@map("question_evaluation")
+}
+
+model InterviewEvaluation {
+  id                       String           @id @default(cuid())
+  sessionId                String           @unique
+  status                   EvaluationStatus @default(PENDING)
+  overallScore             Int?
+  recommendation           Recommendation?
+  recommendationConfidence Float?
+  confidenceLevel          ConfidenceLevel?
+  summary                  String?
+  /// [{ title, evidence, sourceMessageIds[] }]
+  strengths                Json             @default("[]")
+  concerns                 Json             @default("[]")
+  communication            Json             @default("{}")
+  behavioral               Json             @default("{}")
+  followUpTopics           Json             @default("[]")
+  resumeAlignment          Json             @default("{}")
+  /// Per-category weighted scores used to compute overallScore
+  categoryScores           Json             @default("{}")
+  /// Raw model suggestion before deterministic aggregation (audit/debug only)
+  modelRecommendation      Recommendation?
+  templateVersion          Int?
+  promptVersion            String?
+  scoringVersion           String?
+  provider                 String?
+  model                    String?
+  attempts                 Int              @default(0)
+  error                    String?
+  generatedAt              DateTime?
+  overriddenScore          Int?
+  overriddenRecommendation Recommendation?
+  overrideReason           String?
+  overriddenById           String?
+  overriddenAt             DateTime?
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+
+  session             InterviewSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  skillEvaluations    SkillEvaluation[]
+  questionEvaluations QuestionEvaluation[]
+  feedback            EvaluationFeedback[]
+
+  @@index([status])
+  @@map("interview_evaluation")
+}
+
+model SkillEvaluation {
+  id                   String           @id @default(cuid())
+  evaluationId         String
+  skillId              String?
+  skillKey             String
+  skillName            String
+  /// Skill weight within the technical rubric (0–100)
+  weight               Int              @default(0)
+  expectedLevel        SkillLevel?
+  score                Int?
+  confidence           Float            @default(0)
+  confidenceLevel      ConfidenceLevel  @default(LOW)
+  evidenceCount        Int              @default(0)
+  /// [{ questionKey, answerId, answerSummary, assessment, score }]
+  evidence             Json             @default("[]")
+  insufficientEvidence Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+
+  evaluation InterviewEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, skillKey])
+  @@map("skill_evaluation")
+}
+
+model Recording {
+  id         String        @id @default(cuid())
+  sessionId  String
+  messageId  String?
+  kind       RecordingKind
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  durationMs Int?
+  /// Offset from session start, for approximate transcript alignment
+  offsetMs   Int?
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+
+  session InterviewSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  message InterviewMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@map("recording")
+}
+
+model IntegrityEvent {
+  id         String             @id @default(cuid())
+  sessionId  String
+  type       IntegrityEventType
+  occurredAt DateTime           @default(now())
+  metadata   Json               @default("{}")
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, type])
+  @@map("integrity_event")
+}
+
+model ConsentRecord {
+  id            String      @id @default(cuid())
+  candidateId   String
+  invitationId  String
+  sessionId     String?
+  consentType   ConsentType
+  accepted      Boolean
+  policyVersion String
+  ipHash        String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+
+  candidate  Candidate           @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  invitation InterviewInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  session    InterviewSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([candidateId])
+  @@index([invitationId])
+  @@map("consent_record")
+}
+
+model CandidateFeedback {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("candidate_feedback")
+}
+
+// ───────────────────────── Collaboration & audit ─────────────────────────
+
+model RecruiterNote {
+  id            String    @id @default(cuid())
+  companyId     String
+  candidateId   String
+  applicationId String?
+  sessionId     String?
+  authorId      String
+  content       String
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  application Application?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  session     InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  author      User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, createdAt])
+  @@map("recruiter_note")
+}
+
+model EvaluationFeedback {
+  id           String           @id @default(cuid())
+  evaluationId String
+  userId       String
+  accuracy     FeedbackAccuracy
+  correction   String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  evaluation InterviewEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, userId])
+  @@map("evaluation_feedback")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  companyId   String?
+  actorUserId String?
+  actorType   ActorType @default(USER)
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json      @default("{}")
+  requestId   String?
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  actor   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  companyId String
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  /// Prevents duplicate notifications for the same event
+  dedupeKey String?          @unique
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notification")
+}
+
+model DataDeletionRequest {
+  id            String                @id @default(cuid())
+  companyId     String
+  candidateId   String?
+  requestedById String?
+  /// { candidate, resume, transcript, audio, evaluation }
+  scope         Json
+  status        DeletionRequestStatus @default(PENDING)
+  error         String?
+  completedAt   DateTime?
+  createdAt     DateTime              @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@map("data_deletion_request")
+}
+
+// ───────────────────────── Platform infrastructure ─────────────────────────
+
+model BackgroundJob {
+  id          String              @id @default(cuid())
+  name        String
+  payload     Json
+  status      BackgroundJobStatus @default(PENDING)
+  /// Idempotency key: enqueuing the same key twice is a no-op
+  uniqueKey   String?             @unique
+  runAt       DateTime            @default(now())
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  lastError   String?
+  lockedAt    DateTime?
+  lockedBy    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([status, runAt])
+  @@index([name, status])
+  @@map("background_job")
+}
+
+model AiUsageEvent {
+  id               String      @id @default(cuid())
+  companyId        String?
+  sessionId        String?
+  operation        AiOperation
+  provider         String
+  model            String
+  promptVersion    String?
+  latencyMs        Int
+  inputTokens      Int         @default(0)
+  outputTokens     Int         @default(0)
+  audioSeconds     Float?
+  characters       Int?
+  estimatedCostUsd Float       @default(0)
+  success          Boolean
+  errorCode        String?
+  /// Which AI employee made the call (null on legacy interviewer rows)
+  agentType        AgentType?
+  userId           String?
+  createdAt        DateTime    @default(now())
+
+  company Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  session InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([sessionId])
+  @@index([operation, createdAt])
+  @@index([companyId, agentType, createdAt])
+  @@map("ai_usage_event")
+}
+
+model FeatureFlag {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  description       String?
+  enabled           Boolean  @default(false)
+  /// 0–100: percentage of companies (stable hash) that receive the flag when enabled
+  rolloutPercentage Int      @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  overrides FeatureFlagOverride[]
+
+  @@map("feature_flag")
+}
+
+model FeatureFlagOverride {
+  id        String   @id @default(cuid())
+  flagId    String
+  companyId String
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  flag    FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, companyId])
+  @@map("feature_flag_override")
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_bucket")
+}
+
+// ───────────────────────── Platform: subscriptions & agents ─────────────────────────
+
+/// A company's subscription to one AI employee (product). One row per company × product.
+model ProductSubscription {
+  id                 String             @id @default(cuid())
+  companyId          String
+  productKey         String
+  planId             String?
+  status             SubscriptionStatus
+  trialStartedAt     DateTime?
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  canceledAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan    Plan?   @relation(fields: [planId], references: [id])
+
+  @@unique([companyId, productKey])
+  @@index([status, trialEndsAt])
+  @@map("product_subscription")
+}
+
+/// A configured AI employee inside a company. `config` is validated per type (e.g. salesAgentConfigSchema).
+model Agent {
+  id                    String      @id @default(cuid())
+  companyId             String
+  type                  AgentType
+  name                  String
+  status                AgentStatus @default(SETUP)
+  config                Json        @default("{}")
+  configVersion         Int         @default(1)
+  onboardingCompletedAt DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, type])
+  @@map("agent")
+}
+
+// ───────────────────────────── AI Sales Agent ─────────────────────────────
+
+model SalesLead {
+  id                 String     @id @default(cuid())
+  companyId          String
+  firstName          String?
+  lastName           String?
+  fullName           String
+  /// The prospect's company name (`company` is the tenant relation)
+  companyName        String?
+  jobTitle           String?
+  email              String?
+  emailNormalized    String?
+  phone              String?
+  phoneNormalized    String?
+  website            String?
+  domain             String?
+  linkedinUrl        String?
+  location           String?
+  city               String?
+  country            String?
+  industry           String?
+  companySize        String?
+  source             LeadSource @default(MANUAL)
+  status             LeadStatus @default(NEW)
+  qualificationScore Int?
+  intentScore        Int?
+  /// 0–100 from the latest completed research (null = not researched)
+  problemRelevance   Int?
+  leadScore          Int?
+  /// LeadScoreResult from @repo/sales-engine (factors, reasons, confidence)
+  scoreBreakdown     Json?
+  scoredAt           DateTime?
+  ownerId            String?
+  notes              String?
+  tags               String[]   @default([])
+  customFields       Json       @default("{}")
+  lastContactedAt    DateTime?
+  nextFollowUpAt     DateTime?
+  statusChangedAt    DateTime   @default(now())
+  doNotContactAt     DateTime?
+  createdById        String?
+  deletedAt          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  company    Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  owner         User?               @relation("SalesLeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activities    SalesActivity[]
+  research      SalesLeadResearch[]
+  conversations SalesConversation[]
+
+  @@index([companyId, status])
+  @@index([companyId, leadScore])
+  @@index([companyId, createdAt])
+  @@index([companyId, emailNormalized])
+  @@index([companyId, domain])
+  @@index([companyId, phoneNormalized])
+  @@map("sales_lead")
+}
+
+/// Timeline + AI action log for the sales agent. Append-only.
+model SalesActivity {
+  id          String    @id @default(cuid())
+  companyId   String
+  leadId      String?
+  actorType   ActorType
+  actorUserId String?
+  /// Dotted event type, e.g. lead.created, lead.status_changed, ai.copilot_answered
+  type        String
+  summary     String
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lead    SalesLead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([leadId, createdAt])
+  @@map("sales_activity")
+}
+
+/// One research run on a lead. Results are advisory: facts are labelled
+/// VERIFIED (with source), INFERRED or UNKNOWN and never written onto the lead
+/// without a person applying them.
+model SalesLeadResearch {
+  id            String         @id @default(cuid())
+  companyId     String
+  leadId        String
+  status        ResearchStatus @default(QUEUED)
+  /// LeadResearchResult from @repo/ai (validated JSON)
+  result        Json?
+  /// [{ url, title, fetchedAt }] actually used
+  sources       Json           @default("[]")
+  provider      String
+  model         String?
+  promptVersion String?
+  error         String?
+  requestedById String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  company Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lead    SalesLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([companyId, status])
+  @@map("sales_lead_research")
+}
+
+/// One AI prospect-discovery run (spec §13): search criteria, the candidates found
+/// (with sources, website verification and duplicate flags) and which were added as leads.
+model SalesDiscoveryRun {
+  id            String         @id @default(cuid())
+  companyId     String
+  status        ResearchStatus @default(QUEUED)
+  provider      String
+  /// DiscoveryCriteria (validated JSON)
+  criteria      Json
+  /// StoredCandidate[] (validated JSON)
+  candidates    Json           @default("[]")
+  notes         Json           @default("[]")
+  model         String?
+  promptVersion String?
+  error         String?
+  requestedById String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, status])
+  @@map("sales_discovery_run")
+}
+
+/// A thread with a prospect on one channel (email threads arrive with mailbox integration).
+model SalesConversation {
+  id            String       @id @default(cuid())
+  companyId     String
+  leadId        String
+  channel       SalesChannel
+  subject       String?
+  status        String       @default("OPEN")
+  lastMessageAt DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lead     SalesLead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages SalesMessage[]
+
+  @@index([companyId, lastMessageAt])
+  @@index([leadId, lastMessageAt])
+  @@map("sales_conversation")
+}
+
+model SalesMessage {
+  id                String             @id @default(cuid())
+  companyId         String
+  conversationId    String
+  direction         MessageDirection
+  channel           SalesChannel
+  status            SalesMessageStatus
+  /// e.g. COLD_EMAIL, FOLLOW_UP (for AI drafts)
+  messageType       String?
+  sender            String?
+  recipient         String?
+  subject           String?
+  content           String
+  /// ConversationAnalysis (inbound) or draft metadata (outbound), validated JSON
+  analysis          Json?
+  providerMessageId String?
+  createdById       String?
+  generatedByAi     Boolean            @default(false)
+  occurredAt        DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversation SalesConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, occurredAt])
+  @@index([companyId, status])
+  @@map("sales_message")
+}
+
+/// Never contact these again (opt-outs, bounces, complaints). Checked before any outreach.
+model SalesSuppression {
+  id        String            @id @default(cuid())
+  companyId String
+  /// normalised email, phone or domain
+  value     String
+  kind      String
+  reason    SuppressionReason
+  leadId    String?
+  note      String?
+  createdAt DateTime          @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, kind, value])
+  @@map("sales_suppression")
+}
